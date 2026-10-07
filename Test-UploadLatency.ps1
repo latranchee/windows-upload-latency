@@ -182,7 +182,17 @@ try {
             error = $result.errormsg
         })
         if ($result.http_code -ne 200 -or $result.exitcode -ne 0 -or $result.size_upload -ne ([long]$UploadMB * 1000000)) {
-            throw "Upload $index failed or was incomplete. See upload-$index.json and upload-$index.err."
+            $reason = [string]$result.errormsg
+            if ([string]::IsNullOrWhiteSpace($reason)) {
+                $errorPath = Join-Path $OutputDirectory "upload-$index.err"
+                if (Test-Path -LiteralPath $errorPath) {
+                    $reason = [string](Get-Content -LiteralPath $errorPath -Raw)
+                }
+            }
+            if ([string]::IsNullOrWhiteSpace($reason)) { $reason = 'The server response or uploaded byte count did not match the expected result.' }
+            $reason = $reason.Trim()
+            $detail = "curl exit $($result.exitcode); HTTP $($result.http_code); sent $($result.size_upload)/$([long]$UploadMB * 1000000) bytes"
+            throw "Upload $index failed ($detail): $reason Loaded-latency results are invalid for this run. Diagnostics: $OutputDirectory"
         }
     }
 } catch {

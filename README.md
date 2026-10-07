@@ -64,6 +64,21 @@ If a downloaded script is blocked, review it and run `Unblock-File .\Test-Upload
 
 This measures ICMP latency during a capped upload. Browser speed tests may use different servers and latency methods. A 15 Mbps load only saturates an Internet connection whose usable upload capacity is around that rate. Choose a cap and payload size appropriate to what you want to test.
 
+## Connection errors
+
+`curl exit 28`, `HTTP 0`, and `sent 0/... bytes` with a "Failed to connect" message mean the upload never connected. The ping samples from that failed run do not measure upload-loaded latency. The script still attempts to remove its temporary cap and records the outcome as `policyRemoved` in `summary.json`.
+
+With the test stopped, check connectivity without the cap:
+
+```powershell
+curl.exe -I --connect-timeout 20 --max-time 25 'https://speed.cloudflare.com/__down?bytes=0'
+curl.exe -4 -I --connect-timeout 20 --max-time 25 'https://speed.cloudflare.com/__down?bytes=0'
+```
+
+The second command forces IPv4. Differences between the two results can help diagnose address-family routing issues. These checks use the same host but a different request from the upload, so a successful check does not guarantee that POST uploads will work. The upload's connection timeout is 10 seconds; `UploadTimeoutSeconds` controls its overall duration.
+
+For other failures, the terminal includes curl's error and the results folder. `upload-1.err` and `upload-1.json` contain the original diagnostics. Do not publish these files without reviewing the network details they contain.
+
 ## Cleanup and requirements
 
 Use Windows with the `NetQos` module, an IPv4 default route, and `curl.exe` supporting `--write-out '%{json}'` (curl 7.70+). The script refuses to start when existing QoS policies are active. It does not change those policies. With VPNs or multiple active adapters, verify the selected route and measured rate; the throughput counter covers the selected adapter.
